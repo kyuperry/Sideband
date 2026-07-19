@@ -60,6 +60,15 @@ jobs:
         run: |
           make -C sbapp prepare
           make -C sbapp prebake
+
+          # Sideband's patch target expects these generated Java
+          # directories to exist after the initial Buildozer prebake.
+          mkdir -p sbapp/.buildozer/android/platform/build-arm64-v8a/build/bootstrap_builds/sdl2/jni/SDL/android-project/app/src/main/java/org/libsdl/app
+          mkdir -p sbapp/.buildozer/android/platform/build-arm64-v8a/dists/sideband/src/main/java/org/libsdl/app
+          mkdir -p sbapp/.buildozer/android/platform/build-arm64-v8a/dists/sideband/jni/SDL/android-project/app/src/main/java/org/libsdl/app
+          mkdir -p sbapp/.buildozer/android/platform/build-arm64-v8a/build/bootstrap_builds/sdl2/src/main/java/org/kivy/android
+          mkdir -p sbapp/.buildozer/android/platform/build-arm64-v8a/dists/sideband/src/main/java/org/kivy/android
+
           make -C sbapp pacthfiles
           make -C sbapp injectlibs
           make -C sbapp debug
