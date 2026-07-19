@@ -1,0 +1,78 @@
+name: Build Sideband Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - rnode-proximity-alerts
+
+jobs:
+  build:
+    runs-on: ubuntu-22.04
+    timeout-minutes: 120
+
+    steps:
+      - name: Check out custom Sideband
+        uses: actions/checkout@v4
+        with:
+          path: Sideband
+
+      - name: Check out Reticulum
+        uses: actions/checkout@v4
+        with:
+          repository: markqvist/Reticulum
+          path: Reticulum
+
+      - name: Check out LXMF
+        uses: actions/checkout@v4
+        with:
+          repository: markqvist/LXMF
+          path: LXMF
+
+      - name: Check out LXST
+        uses: actions/checkout@v4
+        with:
+          repository: markqvist/LXST
+          path: LXST
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            openjdk-17-jdk \
+            git zip unzip \
+            autoconf automake libtool pkg-config \
+            zlib1g-dev libncurses5-dev libncursesw5-dev \
+            cmake libffi-dev libssl-dev gettext patchelf
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python build tools
+        run: |
+          python -m pip install --upgrade pip setuptools wheel
+          python -m pip install buildozer cython==0.29.36
+
+      - name: Build debug APK
+        working-directory: Sideband
+        run: |
+          make -C sbapp prepare
+          make -C sbapp prebake
+          make -C sbapp pacthfiles
+          make -C sbapp injectlibs
+          make -C sbapp debug
+          make -C sbapp postbuild
+
+      - name: Show generated files
+        if: always()
+        run: |
+          find Sideband/sbapp/bin -maxdepth 1 -type f -print 2>/dev/null || true
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: sideband-rnode-proximity-apk
+          path: Sideband/sbapp/bin/*.apk
+          if-no-files-found: error
