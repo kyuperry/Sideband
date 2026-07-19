@@ -59,7 +59,18 @@ jobs:
         working-directory: Sideband
         run: |
           make -C sbapp prepare
-          make -C sbapp prebake
+
+          # Run the prebake directly. Sideband's Makefile normally
+          # ignores a failed prebake, which hides the original error
+          # and later causes the pycodec2.so patch to fail.
+          (
+            cd sbapp
+            buildozer -v android release
+          )
+
+          # Confirm that prebake produced the native module required
+          # by Sideband's patchpycodec2 target.
+          test -f sbapp/.buildozer/android/platform/build-arm64-v8a/dists/sideband/_python_bundle__arm64-v8a/_python_bundle/site-packages/pycodec2/pycodec2.so
 
           # Sideband's patch target expects these generated Java
           # directories to exist after the initial Buildozer prebake.
