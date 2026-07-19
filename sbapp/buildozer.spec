@@ -53,3 +53,5 @@ log_level = 2
 warn_on_root = 0
 build_dir = ./.buildozer
 bin_dir = ./bin
+
+p4a.branch = develop
