@@ -31,6 +31,13 @@ class Codec2Recipe(Recipe):
     def build_arch(self, arch):        
         with current_directory(self.get_build_dir(arch.arch)):
             env = self.get_recipe_env(arch)
+
+            # Codec2's Android cross-build needs the host-side
+            # generate_codebook utility supplied with this recipe.
+            generator = join(self.get_recipe_dir(), "generate_codebook")
+            os.chmod(generator, 0o755)
+            env["PATH"] = self.get_recipe_dir() + os.pathsep + env.get("PATH", "")
+
             flags = [
                 "..",
                 "--log-level=TRACE",
