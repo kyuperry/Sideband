@@ -4,6 +4,7 @@
 from pythonforandroid.recipe import PythonRecipe
 from pythonforandroid.toolchain import current_directory, info, shprint
 import sh
+import os
 from os.path import abspath, join
 
 
@@ -21,9 +22,14 @@ class LXSTRecipe(PythonRecipe):
 
         # GitHub Actions checks LXST out beside the Sideband directory.
         # From recipes/lxst, move up to the Actions workspace and use LXST.
-        lxst_root = abspath(
-            join(self.get_recipe_dir(), "..", "..", "..", "LXST")
-        )
+        workspace = os.environ.get("GITHUB_WORKSPACE")
+
+        if workspace:
+            lxst_root = join(workspace, "LXST")
+        else:
+            lxst_root = abspath(
+                join(self.get_recipe_dir(), "..", "..", "..", "LXST")
+            )
 
         srcs = (
             join(lxst_root, "LXST"),
