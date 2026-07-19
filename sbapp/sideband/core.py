@@ -148,6 +148,82 @@ class SidebandCore():
 
             self.log_announce(destination_hash, app_data, dest_type=SidebandCore.aspect_filter, stamp_cost=sc, link_stats=link_stats)
 
+        # RNode proximity alert:
+        # Retrieve this exact cached announce packet and inspect the
+        # interface on which Reticulum received it.
+        try:
+            receiving_interface = None
+            announce_packet = RNS.Transport.get_cached_packet(
+                announce_packet_hash,
+                packet_type="announce"
+            )
+
+            if announce_packet is not None:
+                receiving_interface = getattr(
+                    announce_packet,
+                    "receiving_interface",
+                    None
+                )
+
+            interface_is_rnode = False
+            checked_interfaces = set()
+            current_interface = receiving_interface
+
+            # Follow parent-interface wrappers, if present.
+            while (
+                current_interface is not None and
+                id(current_interface) not in checked_interfaces
+            ):
+                checked_interfaces.add(id(current_interface))
+
+                interface_description = (
+                    current_interface.__class__.__module__ + "." +
+                    current_interface.__class__.__name__ + " " +
+                    str(current_interface)
+                ).lower()
+
+                if "rnode" in interface_description:
+                    interface_is_rnode = True
+                    break
+
+                current_interface = getattr(
+                    current_interface,
+                    "parent_interface",
+                    None
+                )
+
+            if self.config.get("connect_rnode", False) and interface_is_rnode:
+                now = time.time()
+                cooldown = 30 * 60
+
+                if not hasattr(self, "_rnode_proximity_seen"):
+                    self._rnode_proximity_seen = {}
+
+                last_alert = self._rnode_proximity_seen.get(destination_hash, 0)
+
+                if now - last_alert >= cooldown:
+                    self._rnode_proximity_seen[destination_hash] = now
+
+                    peer_name = dn if dn is not None else "Unknown Reticulum peer"
+                    signal = []
+
+                    if link_stats.get("rssi") is not None:
+                        signal.append("RSSI "+str(link_stats["rssi"])+" dBm")
+                    if link_stats.get("snr") is not None:
+                        signal.append("SNR "+str(link_stats["snr"])+" dB")
+
+                    signal_text = ", ".join(signal)
+                    address = RNS.prettyhexrep(destination_hash)
+
+                    content = peer_name+" "+address
+                    if signal_text:
+                        content += " — "+signal_text
+
+                    self.notify("Nearby RNode station detected", content)
+
+        except Exception as e:
+            RNS.log("Could not issue RNode proximity alert: "+str(e), RNS.LOG_ERROR)
+
     def __init__(self, owner_app, config_path = None, is_service=False, is_client=False, android_app_dir=None, verbose=False, quiet=False, owner_service=None, service_context=None, is_daemon=False, load_config_only=False, rns_config_path=None):
         self.is_service = is_service
         self.is_client = is_client
